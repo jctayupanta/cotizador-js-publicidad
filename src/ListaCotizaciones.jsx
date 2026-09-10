@@ -196,6 +196,12 @@ export default function ListaCotizaciones() {
     )
   }
 
+  // Conteo por estado, calculado desde lo que ya se leyó de Supabase.
+  const conteoPorEstado = ESTADOS.reduce((acc, e) => {
+    acc[e] = cotizaciones.filter((c) => (c.estado ?? 'Nueva') === e).length
+    return acc
+  }, {})
+
   return (
     <div className="lista">
       {cargando && <p>Cargando cotizaciones…</p>}
@@ -204,6 +210,17 @@ export default function ListaCotizaciones() {
         <p className="mensaje-error" role="status">
           No se pudieron cargar las cotizaciones: {error}
         </p>
+      )}
+
+      {!cargando && !error && cotizaciones.length > 0 && (
+        <div className="resumen-estados">
+          {ESTADOS.map((e) => (
+            <div className="resumen-item" key={e}>
+              <span className="resumen-numero">{conteoPorEstado[e]}</span>
+              <span className="resumen-etiqueta">{e}</span>
+            </div>
+          ))}
+        </div>
       )}
 
       {!cargando && !error && cotizaciones.length === 0 && (
