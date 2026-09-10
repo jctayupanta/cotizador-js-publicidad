@@ -1,8 +1,41 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
-function DetalleCotizacion({ cotizacion, onVolver }) {
+const ESTADOS = ['Nueva', 'Contactado', 'Ganada', 'Perdida']
+
+function DetalleCotizacion({ cotizacion, onVolver, onEstadoActualizado }) {
   const productos = Array.isArray(cotizacion.productos) ? cotizacion.productos : []
+
+  const [estado, setEstado] = useState(cotizacion.estado || 'Nueva')
+  const [guardandoEstado, setGuardandoEstado] = useState(false)
+  const [mensajeEstado, setMensajeEstado] = useState(null) // { tipo, texto }
+
+  async function cambiarEstado(nuevoEstado) {
+    const anterior = estado
+    setEstado(nuevoEstado) // optimista: se ve el cambio de inmediato
+    setGuardandoEstado(true)
+    setMensajeEstado(null)
+
+    const { error } = await supabase
+      .from('cotizaciones')
+      .update({ estado: nuevoEstado })
+      .eq('id', cotizacion.id)
+
+    setGuardandoEstado(false)
+
+    if (error) {
+      setEstado(anterior) // revertir si falló
+      setMensajeEstado({
+        tipo: 'error',
+        texto: `No se pudo actualizar el estado: ${error.message}`,
+      })
+      return
+    }
+
+    setMensajeEstado({ tipo: 'ok', texto: 'Estado actualizado' })
+    // Avisar a la lista para que la tarjeta refleje el cambio sin recargar.
+    onEstadoActualizado(cotizacion.id, nuevoEstado)
+  }
 
   return (
     <div className="detalle">
@@ -27,7 +60,30 @@ function DetalleCotizacion({ cotizacion, onVolver }) {
         </div>
         <div>
           <dt>Estado</dt>
-          <dd>{cotizacion.estado || '—'}</dd>
+          <dd>
+            <select
+              className="detalle-estado-select"
+              value={estado}
+              disabled={guardandoEstado}
+              onChange={(e) => cambiarEstado(e.target.value)}
+            >
+              {ESTADOS.map((op) => (
+                <option key={op} value={op}>
+                  {op}
+                </option>
+              ))}
+            </select>
+            {mensajeEstado && (
+              <span
+                className={
+                  mensajeEstado.tipo === 'ok' ? 'mensaje-ok' : 'mensaje-error'
+                }
+                role="status"
+              >
+                {mensajeEstado.texto}
+              </span>
+            )}
+          </dd>
         </div>
         <div>
           <dt>Detalle</dt>
@@ -119,11 +175,23 @@ export default function ListaCotizaciones() {
     }
   }, [])
 
+  // El detalle guardó un estado nuevo: refrescar la copia en memoria para
+  // que la tarjeta de la lista (y el detalle si se reabre) lo muestren.
+  function actualizarEstadoLocal(id, nuevoEstado) {
+    setCotizaciones((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, estado: nuevoEstado } : c)),
+    )
+    setSeleccionada((prev) =>
+      prev && prev.id === id ? { ...prev, estado: nuevoEstado } : prev,
+    )
+  }
+
   if (seleccionada) {
     return (
       <DetalleCotizacion
         cotizacion={seleccionada}
         onVolver={() => setSeleccionada(null)}
+        onEstadoActualizado={actualizarEstadoLocal}
       />
     )
   }

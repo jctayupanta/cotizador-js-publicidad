@@ -230,6 +230,24 @@ button {
   font-weight: 600;
 }
 
+.detalle-estado-select {
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 600;
+  border: 1px solid #888;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.detalle-datos dd .mensaje-ok,
+.detalle-datos dd .mensaje-error {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 8px;
+  font-size: 0.85em;
+  vertical-align: middle;
+}
+
 .detalle-producto {
   display: flex;
   flex-direction: column;
