@@ -46,6 +46,9 @@ jobs:
           # Credenciales de Supabase (se toman de los Secrets del repo).
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_KEY }}
+          # Telegram: aviso de "nueva cotización" desde el sitio publicado.
+          VITE_TELEGRAM_BOT_TOKEN: ${{ secrets.VITE_TELEGRAM_BOT_TOKEN }}
+          VITE_TELEGRAM_CHAT_ID: ${{ secrets.VITE_TELEGRAM_CHAT_ID }}
 
       - name: Subir el sitio compilado
         uses: actions/upload-pages-artifact@v3

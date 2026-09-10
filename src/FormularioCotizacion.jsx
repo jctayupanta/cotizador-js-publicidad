@@ -39,6 +39,30 @@ function aNumeroONull(valor) {
   return Number.isFinite(n) ? n : null
 }
 
+// Aviso opcional por Telegram. Nunca lanza error: si algo falla (red,
+// credenciales, respuesta de la API) simplemente no llega el mensaje y
+// el resto del flujo (PDF + guardado) no se ve afectado.
+async function notificarTelegram(numero, cliente, total) {
+  try {
+    const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN
+    const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID
+    if (!botToken || !chatId) return
+
+    const texto = `Nueva cotización ${numero} — Cliente: ${
+      cliente || 'sin nombre'
+    } — Total: $${total.toFixed(2)}`
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: texto }),
+      signal: AbortSignal.timeout(10000),
+    })
+  } catch {
+    // El aviso por Telegram es opcional; si falla no pasa nada.
+  }
+}
+
 // A partir de la lista de "numero" ya guardados (formato "JS-XXXXXX"),
 // devuelve el siguiente: el más alto + 1, o PRIMER_NUMERO si no hay ninguno.
 function siguienteNumero(numerosGuardados) {
@@ -136,6 +160,14 @@ export default function FormularioCotizacion() {
       })
       if (error) throw error
       setMensaje({ tipo: 'ok', texto: `Cotización ${numero} guardada` })
+
+      // 4) Aviso por Telegram. Es opcional: si falla, el usuario no ve
+      //    ningún error (el PDF ya se descargó y la cotización ya se guardó).
+      const totalCotizacion = productos.reduce(
+        (suma, p) => suma + toNumber(p.total),
+        0,
+      )
+      await notificarTelegram(numero, cliente, totalCotizacion)
     } catch (error) {
       setMensaje({
         tipo: 'error',
