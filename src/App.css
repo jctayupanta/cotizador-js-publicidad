@@ -67,6 +67,12 @@ button {
   gap: 8px;
 }
 
+.foto-botones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .foto-boton {
   align-self: flex-start;
   padding: 8px 12px;

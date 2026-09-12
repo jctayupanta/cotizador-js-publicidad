@@ -39,6 +39,68 @@ function aNumeroONull(valor) {
   return Number.isFinite(n) ? n : null
 }
 
+// Un producto "vacío" es uno que el usuario agregó (con "+ Agregar
+// producto") y todavía no llenó con nada. No cuenta el % Ganancia porque
+// ese campo siempre trae un valor por defecto (30) aunque no se lo toque.
+function productoEstaVacio(p) {
+  const camposDeContenido = [
+    p.descripcion,
+    p.material,
+    p.incluye,
+    p.cantidad,
+    p.costo,
+    p.valorUnitario,
+    p.total,
+  ]
+  const sinTexto = camposDeContenido.every((v) => v === '' || v == null)
+  return sinTexto && !p.foto
+}
+
+// Solo para el PDF: se omiten los productos vacíos (el formulario los
+// conserva tal cual, por si el usuario todavía los va a llenar).
+function productosParaElPDF(productos) {
+  return productos.filter((p) => !productoEstaVacio(p))
+}
+
+// Entrega el PDF ya generado al usuario. En celular, si el navegador
+// soporta compartir archivos (Web Share API), abre el panel nativo de
+// compartir/guardar. Si no (por ejemplo en computadora, o si falla por
+// algo que no sea el usuario cancelando), cae a la descarga clásica.
+async function entregarPDF(blob, numero) {
+  const nombreArchivo = `cotizacion-${numero}.pdf`
+  const archivo = new File([blob], nombreArchivo, { type: 'application/pdf' })
+
+  const puedeCompartir =
+    typeof navigator !== 'undefined' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [archivo] })
+
+  if (puedeCompartir) {
+    try {
+      await navigator.share({
+        files: [archivo],
+        title: `Cotización ${numero}`,
+      })
+      return
+    } catch (error) {
+      // El usuario cerró el panel de compartir sin elegir nada: no es un
+      // error, no hace falta además descargar el archivo.
+      if (error && error.name === 'AbortError') return
+      // Cualquier otro problema (navegador raro, permisos, etc.): seguimos
+      // con la descarga de siempre como respaldo.
+    }
+  }
+
+  const url = URL.createObjectURL(blob)
+  const enlace = document.createElement('a')
+  enlace.href = url
+  enlace.download = nombreArchivo
+  document.body.appendChild(enlace)
+  enlace.click()
+  document.body.removeChild(enlace)
+  URL.revokeObjectURL(url)
+}
+
 // Aviso opcional por Telegram. Nunca lanza error: si algo falla (red,
 // credenciales, respuesta de la API) simplemente no llega el mensaje y
 // el resto del flujo (PDF + guardado) no se ve afectado.
@@ -107,8 +169,10 @@ export default function FormularioCotizacion() {
       return
     }
 
-    // 2) Generar y descargar el PDF. El PDF se descarga pase lo que pase
-    //    con el guardado en Supabase.
+    // 2) Generar y entregar el PDF (compartir en celular / descargar en
+    //    escritorio). Esto ocurre pase lo que pase con el guardado en
+    //    Supabase. Los productos vacíos (agregados pero sin llenar) no
+    //    aparecen como filas en el PDF, aunque siguen en el formulario.
     try {
       const blob = await pdf(
         <CotizacionPDF
@@ -116,18 +180,11 @@ export default function FormularioCotizacion() {
           cliente={cliente}
           contacto={contacto}
           detalleGeneral={detalleGeneral}
-          productos={productos}
+          productos={productosParaElPDF(productos)}
         />,
       ).toBlob()
 
-      const url = URL.createObjectURL(blob)
-      const enlace = document.createElement('a')
-      enlace.href = url
-      enlace.download = `cotizacion-${numero}.pdf`
-      document.body.appendChild(enlace)
-      enlace.click()
-      document.body.removeChild(enlace)
-      URL.revokeObjectURL(url)
+      await entregarPDF(blob, numero)
     } catch (error) {
       setMensaje({
         tipo: 'error',
@@ -386,19 +443,33 @@ export default function FormularioCotizacion() {
                   </button>
                 </div>
               ) : (
-                <label className="foto-boton">
-                  Agregar foto
-                  {/* Sin `capture`: en el celular abre el selector nativo
-                      con "Tomar foto" y "Elegir de galería". */}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(e) =>
-                      elegirFoto(index, e.target.files[0], e.target)
-                    }
-                  />
-                </label>
+                <div className="foto-botones">
+                  {/* Botón separado que abre directo la cámara. */}
+                  <label className="foto-boton">
+                    Tomar foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      hidden
+                      onChange={(e) =>
+                        elegirFoto(index, e.target.files[0], e.target)
+                      }
+                    />
+                  </label>
+                  {/* Sin `capture`: abre el selector de archivos/galería. */}
+                  <label className="foto-boton">
+                    Elegir de galería
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) =>
+                        elegirFoto(index, e.target.files[0], e.target)
+                      }
+                    />
+                  </label>
+                </div>
               )}
             </div>
 
