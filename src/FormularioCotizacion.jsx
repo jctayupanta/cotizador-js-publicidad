@@ -444,31 +444,38 @@ export default function FormularioCotizacion() {
                 </div>
               ) : (
                 <div className="foto-botones">
-                  {/* Botón separado que abre directo la cámara. */}
-                  <label className="foto-boton">
-                    Tomar foto
+                  {/* Inputs de archivo REALES y VISIBLES (sin <label> ni
+                      `hidden` + click() por JS): el toque cae directo sobre
+                      el input, así ningún navegador tiene que "adivinar".
+                      El texto del botón nativo lo pone el navegador; el
+                      título de arriba dice cuál es cuál. */}
+                  <div className="foto-opcion">
+                    <span className="foto-opcion-titulo">Tomar foto</span>
+                    {/* Con `capture`: abre directo la cámara. */}
                     <input
                       type="file"
+                      className="foto-input"
                       accept="image/*"
                       capture="environment"
-                      hidden
+                      aria-label="Tomar foto"
                       onChange={(e) =>
                         elegirFoto(index, e.target.files[0], e.target)
                       }
                     />
-                  </label>
-                  {/* Sin `capture`: abre el selector de archivos/galería. */}
-                  <label className="foto-boton">
-                    Elegir de galería
+                  </div>
+                  <div className="foto-opcion">
+                    <span className="foto-opcion-titulo">Elegir de galería</span>
+                    {/* Sin `capture`: abre el selector de archivos/galería. */}
                     <input
                       type="file"
+                      className="foto-input"
                       accept="image/*"
-                      hidden
+                      aria-label="Elegir de galería"
                       onChange={(e) =>
                         elegirFoto(index, e.target.files[0], e.target)
                       }
                     />
-                  </label>
+                  </div>
                 </div>
               )}
             </div>

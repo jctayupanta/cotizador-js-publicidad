@@ -73,13 +73,42 @@ button {
   flex-wrap: wrap;
 }
 
-.foto-boton {
-  align-self: flex-start;
-  padding: 8px 12px;
-  border: 1px solid #888;
-  border-radius: 4px;
-  cursor: pointer;
+.foto-opcion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.foto-opcion-titulo {
   font-weight: 600;
+}
+
+/* Input de archivo real y visible, con el botón nativo estilizado. */
+.foto-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 4px;
+  border: 1px solid #888;
+  border-radius: 6px;
+  background: #fff;
+  color: #555;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.foto-input::file-selector-button {
+  margin-right: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #16294d;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .foto-preview {
