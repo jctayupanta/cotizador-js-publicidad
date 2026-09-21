@@ -6,6 +6,7 @@ import {
   Image,
   StyleSheet,
 } from '@react-pdf/renderer'
+import { parseNumero } from './numeros'
 
 // Las imágenes viven en /public y se referencian por URL, NO se importan.
 // Así el bundler no las mete en el grafo de módulos JS (evita el error
@@ -76,15 +77,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: AZUL,
   },
+  // Estilo del TEXTO de encabezado / contenido (centrado horizontal).
   th: {
     color: AZUL,
     fontFamily: 'Helvetica-Bold',
     fontSize: 8,
-    padding: 4,
+    textAlign: 'center',
   },
   td: {
-    padding: 4,
     fontSize: 8,
+    textAlign: 'center',
+  },
+  // Caja de cada celda: el contenido queda centrado verticalmente.
+  celda: {
+    padding: 4,
+    justifyContent: 'center',
   },
   cellBorder: {
     borderRightWidth: 1,
@@ -94,21 +101,21 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: '#444',
     marginTop: 2,
+    textAlign: 'center',
   },
   subEtiqueta: {
     fontFamily: 'Helvetica-Bold',
   },
 
-  colItem: { width: 34, textAlign: 'center' },
-  colCant: { width: 34, textAlign: 'center' },
+  colItem: { width: 34 },
+  colCant: { width: 34 },
   colDesc: { width: 179 },
   colImg: { width: 104 },
-  colVU: { width: 88, textAlign: 'right' },
-  colTotal: { width: 88, textAlign: 'right' },
+  colVU: { width: 88 },
+  colTotal: { width: 88 },
 
   imgCell: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
   fotoRef: {
     width: 92,
@@ -139,6 +146,24 @@ function fechaDeHoy() {
   const dia = String(d.getDate()).padStart(2, '0')
   const mes = String(d.getMonth() + 1).padStart(2, '0')
   return `${dia}/${mes}/${d.getFullYear()}`
+}
+
+// Formatea un importe con "$" y siempre 2 decimales ("45.5" -> "$45.50",
+// "1250" -> "$1250.00"). Acepta coma o punto como separador decimal. Si está
+// vacío o no es un número, no muestra nada (un "$" solo se vería mal).
+function conDolar(valor) {
+  const n = parseNumero(valor)
+  if (n === null) return ''
+  return `$${n.toFixed(2)}`
+}
+
+// Celda de tabla con un solo texto, centrado horizontal y verticalmente.
+function Celda({ col, encabezado = false, sinBorde = false, children }) {
+  return (
+    <View style={[styles.celda, col, !sinBorde && styles.cellBorder]}>
+      <Text style={encabezado ? styles.th : styles.td}>{children}</Text>
+    </View>
+  )
 }
 
 function InfoLine({ label, valor }) {
@@ -172,34 +197,34 @@ export default function CotizacionPDF({
 
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={[styles.th, styles.colItem, styles.cellBorder]}>
+              <Celda encabezado col={styles.colItem}>
                 Ítems
-              </Text>
-              <Text style={[styles.th, styles.colCant, styles.cellBorder]}>
+              </Celda>
+              <Celda encabezado col={styles.colCant}>
                 Cant.
-              </Text>
-              <Text style={[styles.th, styles.colDesc, styles.cellBorder]}>
+              </Celda>
+              <Celda encabezado col={styles.colDesc}>
                 Descripción
-              </Text>
-              <Text style={[styles.th, styles.colImg, styles.cellBorder]}>
+              </Celda>
+              <Celda encabezado col={styles.colImg}>
                 Imagen de Referencia
-              </Text>
-              <Text style={[styles.th, styles.colVU, styles.cellBorder]}>
+              </Celda>
+              <Celda encabezado col={styles.colVU}>
                 Valor Unitario
-              </Text>
-              <Text style={[styles.th, styles.colTotal]}>Total</Text>
+              </Celda>
+              <Celda encabezado sinBorde col={styles.colTotal}>
+                Total
+              </Celda>
             </View>
 
             {productos.map((p, i) => (
               <View style={styles.tableRow} key={i} wrap={false}>
-                <Text style={[styles.td, styles.colItem, styles.cellBorder]}>
-                  {i + 1}
-                </Text>
-                <Text style={[styles.td, styles.colCant, styles.cellBorder]}>
-                  {p.cantidad}
-                </Text>
-                <View style={[styles.td, styles.colDesc, styles.cellBorder]}>
-                  <Text>{p.descripcion}</Text>
+                <Celda col={styles.colItem}>{i + 1}</Celda>
+                <Celda col={styles.colCant}>{p.cantidad}</Celda>
+                <View
+                  style={[styles.celda, styles.colDesc, styles.cellBorder]}
+                >
+                  <Text style={styles.td}>{p.descripcion}</Text>
                   {p.material ? (
                     <Text style={styles.subLinea}>
                       <Text style={styles.subEtiqueta}>Material:</Text>{' '}
@@ -215,7 +240,7 @@ export default function CotizacionPDF({
                 </View>
                 <View
                   style={[
-                    styles.td,
+                    styles.celda,
                     styles.colImg,
                     styles.cellBorder,
                     styles.imgCell,
@@ -225,10 +250,10 @@ export default function CotizacionPDF({
                     <Image src={p.foto} style={styles.fotoRef} />
                   ) : null}
                 </View>
-                <Text style={[styles.td, styles.colVU, styles.cellBorder]}>
-                  {p.valorUnitario}
-                </Text>
-                <Text style={[styles.td, styles.colTotal]}>{p.total}</Text>
+                <Celda col={styles.colVU}>{conDolar(p.valorUnitario)}</Celda>
+                <Celda sinBorde col={styles.colTotal}>
+                  {conDolar(p.total)}
+                </Celda>
               </View>
             ))}
           </View>

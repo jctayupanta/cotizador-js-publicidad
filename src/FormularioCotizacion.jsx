@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { pdf } from '@react-pdf/renderer'
 import CotizacionPDF from './CotizacionPDF'
 import { supabase } from './supabaseClient'
+import { normalizaDecimal, parseNumero } from './numeros'
 
 // Primer número si la tabla está vacía.
 const PRIMER_NUMERO = 232396
@@ -22,9 +23,10 @@ function nuevoProducto() {
   }
 }
 
+// Lee un número del formulario aceptando "," o "." como separador decimal
+// ("1,30" y "1.30" valen lo mismo). Si no hay número, devuelve 0.
 function toNumber(valor) {
-  const n = parseFloat(valor)
-  return Number.isFinite(n) ? n : 0
+  return parseNumero(valor) ?? 0
 }
 
 function redondea(n) {
@@ -35,7 +37,7 @@ function redondea(n) {
 // (o null si está vacío / no es un número). No afecta cómo se ve el campo.
 function aNumeroONull(valor) {
   if (valor === '' || valor == null) return null
-  const n = Number(valor)
+  const n = Number(normalizaDecimal(valor))
   return Number.isFinite(n) ? n : null
 }
 
