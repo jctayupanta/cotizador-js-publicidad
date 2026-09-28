@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from '@react-pdf/renderer'
 import { parseNumero } from './numeros'
+import { esImagenSoportadaEnPDF } from './imagenes'
 
 // Las imágenes viven en /public y se referencian por URL, NO se importan.
 // Así el bundler no las mete en el grafo de módulos JS (evita el error
@@ -246,7 +247,11 @@ export default function CotizacionPDF({
                     styles.imgCell,
                   ]}
                 >
-                  {p.foto ? (
+                  {/* Si la foto no es JPEG/PNG (formato no soportado por
+                      @react-pdf/renderer), no se intenta dibujar: la celda
+                      queda vacía en vez de romper el PDF. El aviso al
+                      usuario lo muestra FormularioCotizacion al generar. */}
+                  {p.foto && esImagenSoportadaEnPDF(p.foto) ? (
                     <Image src={p.foto} style={styles.fotoRef} />
                   ) : null}
                 </View>

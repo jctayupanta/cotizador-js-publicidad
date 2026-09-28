@@ -3,6 +3,11 @@ import { pdf } from '@react-pdf/renderer'
 import CotizacionPDF from './CotizacionPDF'
 import { supabase } from './supabaseClient'
 import { normalizaDecimal, parseNumero } from './numeros'
+import {
+  archivoAJpegDataUrl,
+  advertenciasDeFoto,
+  textoAdvertenciaFoto,
+} from './imagenes'
 
 // Primer número si la tabla está vacía.
 const PRIMER_NUMERO = 232396
@@ -20,6 +25,8 @@ function nuevoProducto() {
     valorUnitario: '',
     total: '',
     foto: null,
+    fotoCargando: false,
+    fotoError: null,
   }
 }
 
@@ -153,6 +160,8 @@ export default function FormularioCotizacion() {
     setGenerandoPDF(true)
     setMensaje(null)
 
+    const advertenciasFoto = advertenciasDeFoto(productos)
+
     // 1) Calcular el número automático: el más alto ya guardado + 1.
     //    El mismo número va en el PDF y en la fila de Supabase.
     let numero
@@ -197,16 +206,21 @@ export default function FormularioCotizacion() {
     }
 
     // 3) Guardar el registro en Supabase (independiente de la descarga).
-    //    Los campos numéricos de cada producto se guardan como números reales.
+    //    Los campos numéricos de cada producto se guardan como números
+    //    reales; fotoCargando/fotoError son solo de la pantalla, no se
+    //    guardan.
     try {
-      const productosParaGuardar = productos.map((p) => ({
-        ...p,
-        cantidad: aNumeroONull(p.cantidad),
-        costo: aNumeroONull(p.costo),
-        porcentajeGanancia: aNumeroONull(p.porcentajeGanancia),
-        valorUnitario: aNumeroONull(p.valorUnitario),
-        total: aNumeroONull(p.total),
-      }))
+      const productosParaGuardar = productos.map((p) => {
+        const { fotoCargando: _fotoCargando, fotoError: _fotoError, ...resto } = p
+        return {
+          ...resto,
+          cantidad: aNumeroONull(p.cantidad),
+          costo: aNumeroONull(p.costo),
+          porcentajeGanancia: aNumeroONull(p.porcentajeGanancia),
+          valorUnitario: aNumeroONull(p.valorUnitario),
+          total: aNumeroONull(p.total),
+        }
+      })
 
       const { error } = await supabase.from('cotizaciones').insert({
         numero,
@@ -218,7 +232,10 @@ export default function FormularioCotizacion() {
         estado: 'Nueva',
       })
       if (error) throw error
-      setMensaje({ tipo: 'ok', texto: `Cotización ${numero} guardada` })
+      setMensaje({
+        tipo: advertenciasFoto.length > 0 ? 'aviso' : 'ok',
+        texto: `Cotización ${numero} guardada.${textoAdvertenciaFoto(advertenciasFoto)}`,
+      })
 
       // 4) Aviso por Telegram. Es opcional: si falla, el usuario no ve
       //    ningún error (el PDF ya se descargó y la cotización ya se guardó).
@@ -230,7 +247,7 @@ export default function FormularioCotizacion() {
     } catch (error) {
       setMensaje({
         tipo: 'error',
-        texto: `El PDF se descargó, pero no se pudo guardar en Supabase: ${error.message}`,
+        texto: `El PDF se descargó, pero no se pudo guardar en Supabase: ${error.message}${textoAdvertenciaFoto(advertenciasFoto)}`,
       })
     } finally {
       setGenerandoPDF(false)
@@ -253,18 +270,33 @@ export default function FormularioCotizacion() {
     })
   }
 
-  function elegirFoto(index, archivo, inputEl) {
+  // Decodifica la foto elegida (cualquier formato), la reduce a máximo
+  // 1000px y la deja como JPEG en base64 — así el PDF siempre puede
+  // dibujarla, sin importar qué formato entregó la cámara/galería del
+  // celular. Nunca falla en silencio: si algo sale mal, queda un mensaje
+  // visible en ese producto.
+  async function elegirFoto(index, archivo, inputEl) {
     if (!archivo) return
-    const lector = new FileReader()
-    lector.onload = () => {
-      actualizarProducto(index, 'foto', lector.result)
+    actualizarProducto(index, 'fotoError', null)
+    actualizarProducto(index, 'fotoCargando', true)
+    try {
+      const dataUrl = await archivoAJpegDataUrl(archivo)
+      actualizarProducto(index, 'foto', dataUrl)
+    } catch (error) {
+      actualizarProducto(
+        index,
+        'fotoError',
+        error && error.message ? error.message : String(error),
+      )
+    } finally {
+      actualizarProducto(index, 'fotoCargando', false)
       if (inputEl) inputEl.value = ''
     }
-    lector.readAsDataURL(archivo)
   }
 
   function quitarFoto(index) {
     actualizarProducto(index, 'foto', null)
+    actualizarProducto(index, 'fotoError', null)
   }
 
   function actualizarProducto(index, campo, valor) {
@@ -460,6 +492,7 @@ export default function FormularioCotizacion() {
                       accept="image/*"
                       capture="environment"
                       aria-label="Tomar foto"
+                      disabled={producto.fotoCargando}
                       onChange={(e) =>
                         elegirFoto(index, e.target.files[0], e.target)
                       }
@@ -473,12 +506,27 @@ export default function FormularioCotizacion() {
                       className="foto-input"
                       accept="image/*"
                       aria-label="Elegir de galería"
+                      disabled={producto.fotoCargando}
                       onChange={(e) =>
                         elegirFoto(index, e.target.files[0], e.target)
                       }
                     />
                   </div>
                 </div>
+              )}
+
+              {producto.fotoCargando && (
+                <p className="foto-cargando">Cargando foto...</p>
+              )}
+
+              {producto.fotoError && (
+                <p className="foto-error" role="status">
+                  No se pudo procesar la foto
+                  <br />
+                  <span className="foto-error-detalle">
+                    {producto.fotoError}
+                  </span>
+                </p>
               )}
             </div>
 
@@ -508,10 +556,7 @@ export default function FormularioCotizacion() {
       </button>
 
       {mensaje && (
-        <p
-          className={mensaje.tipo === 'ok' ? 'mensaje-ok' : 'mensaje-error'}
-          role="status"
-        >
+        <p className={`mensaje-${mensaje.tipo}`} role="status">
           {mensaje.texto}
         </p>
       )}

@@ -125,6 +125,28 @@ button {
   border-radius: 4px;
 }
 
+.foto-cargando {
+  margin: 0;
+  color: #555;
+  font-style: italic;
+}
+
+.foto-error {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #fde5e5;
+  color: #a12020;
+  font-weight: 600;
+}
+
+.foto-error-detalle {
+  display: inline-block;
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
 .producto-acciones {
   display: flex;
   gap: 8px;
@@ -139,6 +161,7 @@ button {
 }
 
 .mensaje-ok,
+.mensaje-aviso,
 .mensaje-error {
   margin: 4px 0 0;
   padding: 8px 12px;
@@ -149,6 +172,11 @@ button {
 .mensaje-ok {
   background: #e3f4e4;
   color: #1e6f2e;
+}
+
+.mensaje-aviso {
+  background: #fff3cd;
+  color: #8a6100;
 }
 
 .mensaje-error {
