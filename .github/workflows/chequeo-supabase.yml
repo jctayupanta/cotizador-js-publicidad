@@ -1,9 +1,12 @@
-name: Chequeo semanal de Supabase
+name: Chequeo diario de Supabase
 
 on:
-  # Una vez por semana: lunes a las 08:00 UTC (~03:00 en Ecuador).
+  # Todos los días a las 08:00 UTC (~03:00 en Ecuador). Antes corría solo
+  # los lunes, pero Supabase pausó el proyecto por inactividad de todas
+  # formas (el margen de una vez por semana quedó demasiado justo frente
+  # al límite de 7 días sin actividad). A diario deja bastante margen.
   schedule:
-    - cron: '0 8 * * 1'
+    - cron: '0 8 * * *'
   # Botón "Run workflow" en la pestaña Actions para probarlo cuando quieras.
   workflow_dispatch:
 
